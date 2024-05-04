@@ -37,6 +37,7 @@ def total_tiles(layer):
     return 6 * layer + total_tiles(layer - 1)
 
 # generate the coordinate system of tiles, given a number of layers (for a standard board it will be 3)
+# use BFS so we populate each layer sequentially. 
 def generate_coords(num_layers):
     n = total_tiles(num_layers)
     queue = [(0,0,0)]
