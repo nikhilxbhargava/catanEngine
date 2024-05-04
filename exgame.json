@@ -1,0 +1,249 @@
+{
+    "players": [
+        {
+          "name": "Player 1",
+          "resources": {
+            "brick": 1,
+            "wood": 1,
+            "sheep": 1,
+            "wheat": 1,
+            "ore": 0
+          },
+          "settlements": [
+            {"location": "A1", "connected_vertices": ["B1", "A2", "B2"]},
+            {"location": "C1", "connected_vertices": ["B1", "C2", "D1"]}
+          ],
+          "cities": [],
+          "roads": [
+            {"start": "A1", "end": "B1"},
+            {"start": "C1", "end": "B1"}
+          ],
+          "victory_points": 2,
+          "dev_cards": {"knights": 0, "victory_points": 0, "road_building": 0, "year_of_plenty": 0, "monopoly": 0}
+        },
+        {
+          "name": "Player 2",
+          "resources": {
+            "brick": 1,
+            "wood": 1,
+            "sheep": 1,
+            "wheat": 1,
+            "ore": 0
+          },
+          "settlements": [
+            {"location": "C2", "connected_vertices": ["C1", "D2", "D1"]},
+            {"location": "A2", "connected_vertices": ["A1", "B2", "C2"]}
+          ],
+          "cities": [],
+          "roads": [
+            {"start": "C2", "end": "D2"},
+            {"start": "A2", "end": "B2"}
+          ],
+          "victory_points": 2,
+          "dev_cards": {"knights": 0, "victory_points": 0, "road_building": 0, "year_of_plenty": 0, "monopoly": 0}
+        },
+        {
+          "name": "Player 3",
+          "resources": {
+            "brick": 1,
+            "wood": 1,
+            "sheep": 1,
+            "wheat": 1,
+            "ore": 0
+          },
+          "settlements": [
+            {"location": "D1", "connected_vertices": ["D2", "C1", "C2"]},
+            {"location": "B2", "connected_vertices": ["B1", "C2", "A2"]}
+          ],
+          "cities": [],
+          "roads": [
+            {"start": "D1", "end": "D2"},
+            {"start": "B2", "end": "C2"}
+          ],
+          "victory_points": 2,
+          "dev_cards": {"knights": 0, "victory_points": 0, "road_building": 0, "year_of_plenty": 0, "monopoly": 0}
+        },
+        {
+          "name": "Player 4",
+          "resources": {
+            "brick": 1,
+            "wood": 1,
+            "sheep": 1,
+            "wheat": 1,
+            "ore": 0
+          },
+          "settlements": [
+            {"location": "B1", "connected_vertices": ["A1", "B2", "C1"]},
+            {"location": "D2", "connected_vertices": ["D1", "C2", "C1"]}
+          ],
+          "cities": [],
+          "roads": [
+            {"start": "B1", "end": "A1"},
+            {"start": "D2", "end": "C2"}
+          ],
+          "victory_points": 2,
+          "dev_cards": {"knights": 0, "victory_points": 0, "road_building": 0, "year_of_plenty": 0, "monopoly": 0}
+        }
+      ],
+    "map": {
+      "vertices": {
+        "A1": {"type": "settlement", "owner": "Player 1"},
+        "A2": {"type": "settlement", "owner": "Player 2"},
+        "B1": {"type": "settlement", "owner": "Player 1"},
+        "B2": {"type": "settlement", "owner": "Player 3"},
+        "C1": {"type": "settlement", "owner": "Player 1"},
+        "C2": {"type": "settlement", "owner": "Player 2"},
+        "D1": {"type": "settlement", "owner": "Player 3"},
+        "D2": {"type": "settlement", "owner": "Player 4"}
+      },
+      "edges": {
+        "A1_B1": {"type": "road", "owner": "Player 1"},
+        "A1_A2": {"type": "road", "owner": "Player 1"},
+        "A2_B2": {"type": "road", "owner": "Player 2"},
+        "B1_C1": {"type": "road", "owner": "Player 1"},
+        "B1_B2": {"type": "road", "owner": "Player 3"},
+        "C1_D1": {"type": "road", "owner": "Player 1"},
+        "C1_C2": {"type": "road", "owner": "Player 2"},
+        "C2_D2": {"type": "road", "owner": "Player 2"},
+        "D1_D2": {"type": "road", "owner": "Player 4"},
+        "B2_C2": {"type": "road", "owner": "Player 3"},
+        "B2_A2": {"type": "road", "owner": "Player 3"}
+      },
+      "tiles": {
+        "tile_1": {
+          "type": "ore",
+          "number": 5,
+          "vertices": ["A1", "A2", "A3", "B2", "B3", "B4"],
+          "edges": ["A1_B2", "A1_A2", "A2_A3", "B2_B3", "B3_B4", "A3_B4"],
+          "top_left_vertex": "A1"
+        },
+        "tile_2": {
+          "type": "sheep",
+          "number": 6,
+          "vertices": ["B1", "B2", "C1"],
+          "edges": ["A1_B1", "B1_B2"],
+          "top_left_vertex": "B1"
+        },
+        "tile_3": {
+          "type": "sheep",
+          "number": 9,
+          "vertices": ["C1", "C2", "D1"],
+          "edges": ["B1_C1", "C1_C2"],
+          "top_left_vertex": "C1"
+        },
+        "tile_4": {
+          "type": "wheat",
+          "number": 4,
+          "vertices": ["D1", "D2", "C2"],
+          "edges": ["C1_D1", "C2_D2"],
+          "top_left_vertex": "D1"
+        },
+        "tile_5": {
+          "type": "ore",
+          "number": 10,
+          "vertices": ["D2", "C2", "C1"],
+          "edges": ["C2_D2", "C1_D1"],
+          "top_left_vertex": "D2"
+        },
+        "tile_6": {
+          "type": "desert",
+          "vertices": ["A2", "B2", "C2"],
+          "edges": [],
+          "top_left_vertex": "A2"
+        },
+        "tile_7": {
+          "type": "wood",
+          "number": 11,
+          "vertices": ["A3", "B3", "C3"],
+          "edges": ["A3_B3", "A3_B2"],
+          "top_left_vertex": "A3"
+        },
+        "tile_8": {
+          "type": "brick",
+          "number": 8,
+          "vertices": ["A4", "B4", "C4"],
+          "edges": ["A4_B4", "A4_B3"],
+          "top_left_vertex": "A4"
+        },
+        "tile_9": {
+          "type": "sheep",
+          "number": 3,
+          "vertices": ["A5", "B5", "C5"],
+          "edges": ["A5_B5", "A5_B4"],
+          "top_left_vertex": "A5"
+        },
+        "tile_10": {
+          "type": "wheat",
+          "number": 2,
+          "vertices": ["A6", "B6", "C6"],
+          "edges": ["A6_B6", "A6_B5"],
+          "top_left_vertex": "A6"
+        },
+        "tile_11": {
+          "type": "ore",
+          "number": 12,
+          "vertices": ["A7", "B7", "C7"],
+          "edges": ["A7_B7", "A7_B6"],
+          "top_left_vertex": "A7"
+        },
+        "tile_12": {
+          "type": "wood",
+          "number": 8,
+          "vertices": ["B3", "B4", "C3"],
+          "edges": ["A3_B3", "A4_B4"],
+          "top_left_vertex": "B3"
+        },
+        "tile_13": {
+          "type": "brick",
+          "number": 3,
+          "vertices": ["B4", "B5", "C4"],
+          "edges": ["A4_B4", "A5_B5"],
+          "top_left_vertex": "B4"
+        },
+        "tile_14": {
+          "type": "sheep",
+          "number": 11,
+          "vertices": ["B6", "B7", "C6"],
+          "edges": ["A6_B6", "A7_B7"],
+          "top_left_vertex": "B6"
+        },
+        "tile_15": {
+          "type": "wheat",
+          "number": 6,
+          "vertices": ["C3", "C4", "D3"],
+          "edges": ["A3_B3", "A4_B4"],
+          "top_left_vertex": "C3"
+        },
+        "tile_16": {
+          "type": "ore",
+          "number": 5,
+          "vertices": ["C5", "C6", "D5"],
+          "edges": ["A5_B5", "A6_B6"],
+          "top_left_vertex": "C5"
+        },
+        "tile_17": {
+          "type": "wood",
+          "number": 9,
+          "vertices": ["D3", "D4", "E3"],
+          "edges": ["C3_D3", "C4_D4"],
+          "top_left_vertex": "D3"
+        },
+        "tile_18": {
+          "type": "brick",
+          "number": 10,
+          "vertices": ["D4", "D5", "E4"],
+          "edges": ["C4_D4", "C5_D5"],
+          "top_left_vertex": "D4"
+        },
+        "tile_19": {
+          "type": "sheep",
+          "number": 4,
+          "vertices": ["D6", "D7", "E6"],
+          "edges": ["C6_D6", "C7_D7"],
+          "top_left_vertex": "D6"
+        }
+      }
+    },
+    "turn": 1
+  }
+  
