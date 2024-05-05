@@ -13,12 +13,12 @@ from game.enums import (
 )
 
 # for a standard board
-NUM_NODES = 54
+NUM_VERTEX = 54
 NUM_EDGES = 72
 NUM_TILES = 19
 
 EdgeId = Tuple[int, int]
-NodeId = int
+VertexId = int
 Coordinate = Tuple[int, int, int]
 
 @dataclass
@@ -26,7 +26,7 @@ class Port:
     id: int
     resource: Union[Resources, None]  # None means desert tile
     direction: Direction
-    nodes: Dict[Vertex, NodeId]  # node_ref => node_id
+    nodes: Dict[Vertex, VertexId]  # node_ref => node_id
     edges: Dict[Edge, EdgeId]  # edge_ref => edge
 
     # The id is unique among the tiles, so we can use it as the hash.
