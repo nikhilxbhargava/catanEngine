@@ -1,7 +1,7 @@
-from typing import Dict, FrozenSet, List, Literal, Mapping, Set, Tuple, Type, Union
+from typing import Dict, List, Mapping, Set, Tuple, Type, Union
 from dataclasses import dataclass
-from game.coordinate_system import Direction, add, UNIT_VECTORS
-from game.enums import (
+from coordinate_system import Direction, add, UNIT_VECTORS
+from enums import (
     Resources,
     WOOD,
     BRICK,
@@ -24,20 +24,20 @@ Coordinate = Tuple[int, int, int]
 @dataclass
 class Port:
     id: int
-    resource: Union[Resources, None]  # None means desert tile
+    resource: Union[Resources, None]  # None = 3:1 port
     direction: Direction
-    nodes: Dict[Vertex, VertexId]  # node_ref => node_id
-    edges: Dict[Edge, EdgeId]  # edge_ref => edge
-
+    nodes: Dict[Vertex, VertexId]
+    edges: Dict[Edge, EdgeId]
+    
     def __hash__(self):
         return self.id
 
 @dataclass
 class LandTile:
     id: int
-    resource: Union[Resources, None] #where none is desert tile
-    vertexes: Dict[Vertex, NodeId]  # node_ref => node_id
-    edges: Dict[Edge, EdgeId]  # edge_ref => edge
+    resource: Union[Resources, None] # None = Desert
+    vertexes: Dict[Vertex, VertexId] 
+    edges: Dict[Edge, EdgeId]
 
     def __hash__(self):
         return self.id

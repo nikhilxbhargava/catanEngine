@@ -33,8 +33,6 @@ CITY: Final = "CITY"
 ROAD: Final = "ROAD"
 BUILDING_TYPES: List[BuildingTypes] = [SETTLEMENT, CITY, ROAD]
 
-
-
 #       1
 #      / \
 #   6 /   \ 2
