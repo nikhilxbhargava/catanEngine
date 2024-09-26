@@ -7,7 +7,6 @@ class Color(Enum):
     ORANGE = "ORANGE"
     WHITE = "WHITE"
 
-
 class Player:
     def __init__(self, color, is_bot=True):
         self.color = color
@@ -15,7 +14,6 @@ class Player:
 
     def decide(self, game, playable_actions):
         raise NotImplementedError
-
 
 class randomPlayer(Player):
     def decide(self, game, playable_actions):
