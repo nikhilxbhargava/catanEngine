@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import List, Literal, Final
 
 Resources = Literal["WOOD", "BRICK", "SHEEP", "WHEAT", "ORE"]
@@ -35,7 +35,7 @@ BUILDING_TYPES: List[BuildingTypes] = [SETTLEMENT, CITY, ROAD]
 
 #       1
 #      / \
-#   6 /   \ 2
+#   6 /    \ 2
 #    |     |
 #   5 \   / 3
 #      \ /
@@ -59,3 +59,23 @@ class Edge(Enum):
     WEST = "WEST"
     NORTHWEST = "NORTHWEST"
     NORTHEAST = "NORTHEAST"
+
+
+class GamePhase(IntEnum):
+    SETUP_FIRST_SETTLEMENT = 0
+    SETUP_FIRST_ROAD = 1
+    SETUP_SECOND_SETTLEMENT = 2
+    SETUP_SECOND_ROAD = 3
+    ROLL_DICE = 4
+    DISCARD = 5
+    MOVE_ROBBER = 6
+    STEAL = 7
+    MAIN_TURN = 8
+    GAME_OVER = 9
+
+
+class Color(IntEnum):
+    RED = 0
+    BLUE = 1
+    ORANGE = 2
+    WHITE = 3

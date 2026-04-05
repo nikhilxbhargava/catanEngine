@@ -1,54 +1,50 @@
-from typing import Dict, List, Mapping, Set, Tuple, Type, Union
-from dataclasses import dataclass
-from coordinate_system import Direction, add, UNIT_VECTORS
-from enums import (
-    Resources,
-    WOOD,
-    BRICK,
-    SHEEP,
-    WHEAT,
-    ORE,
-    Edge,
-    Vertex,
+from typing import Dict, List, Mapping, Tuple, Type, Union
+from dataclasses import dataclass, field
+from catan.coordinate_system import Direction, Coordinate
+from catan.enums import (
+    Resources, WOOD, BRICK, SHEEP, WHEAT, ORE, Edge, Vertex,
 )
 
-# for a standard board
-NUM_VERTEX = 54
+NUM_VERTICES = 54
 NUM_EDGES = 72
-NUM_TILES = 19
+NUM_LAND_TILES = 19
 
-EdgeId = Tuple[int, int]
+EdgeId = Tuple[int, int]  # sorted pair of vertex ids
 VertexId = int
-Coordinate = Tuple[int, int, int]
+
 
 @dataclass
 class Port:
     id: int
     resource: Union[Resources, None]  # None = 3:1 port
     direction: Direction
-    nodes: Dict[Vertex, VertexId]
-    edges: Dict[Edge, EdgeId]
-    
+    nodes: Dict[Vertex, VertexId] = field(default_factory=dict)
+    edges: Dict[Edge, EdgeId] = field(default_factory=dict)
+
     def __hash__(self):
         return self.id
+
 
 @dataclass
 class LandTile:
     id: int
-    resource: Union[Resources, None] # None = Desert
-    vertexes: Dict[Vertex, VertexId] 
-    edges: Dict[Edge, EdgeId]
+    resource: Union[Resources, None]  # None = Desert
+    number: int  # dice number (0 for desert)
+    coordinate: Coordinate = (0, 0, 0)
+    nodes: Dict[Vertex, VertexId] = field(default_factory=dict)
+    edges: Dict[Edge, EdgeId] = field(default_factory=dict)
 
     def __hash__(self):
         return self.id
-    
+
+
 @dataclass(frozen=True)
 class Water:
-    nodes: Dict[Vertex, int]
-    edges: Dict[Edge, EdgeId]
+    coordinate: Coordinate = (0, 0, 0)
 
 
 Tile = Union[LandTile, Port, Water]
+
 
 @dataclass(frozen=True)
 class MapTemplate:
@@ -60,50 +56,20 @@ class MapTemplate:
     ]
 
 
-#hard code standard map
 BASE_MAP_TEMPLATE = MapTemplate(
     [2, 3, 3, 4, 4, 5, 5, 6, 6, 8, 8, 9, 9, 10, 10, 11, 11, 12],
     [
-        # These are 2:1 ports
-        WOOD,
-        BRICK,
-        SHEEP,
-        WHEAT,
-        ORE,
-        # These represent 3:1 ports
-        None,
-        None,
-        None,
-        None,
+        WOOD, BRICK, SHEEP, WHEAT, ORE,
+        None, None, None, None,
     ],
     [
-        # Four wood tiles
-        WOOD,
-        WOOD,
-        WOOD,
-        WOOD,
-        # Three brick tiles
-        BRICK,
-        BRICK,
-        BRICK,
-        # Four sheep tiles
-        SHEEP,
-        SHEEP,
-        SHEEP,
-        SHEEP,
-        # Four wheat tiles
-        WHEAT,
-        WHEAT,
-        WHEAT,
-        WHEAT,
-        # Three ore tiles
-        ORE,
-        ORE,
-        ORE,
-        # One desert
-        None,
+        WOOD, WOOD, WOOD, WOOD,
+        BRICK, BRICK, BRICK,
+        SHEEP, SHEEP, SHEEP, SHEEP,
+        WHEAT, WHEAT, WHEAT, WHEAT,
+        ORE, ORE, ORE,
+        None,  # desert
     ],
-    # 3 layers, where last layer is water
     {
         # center
         (0, 0, 0): LandTile,

@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catan Engine Dashboard</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --surface2: #0f3460;
+    --accent: #e94560;
+    --text: #eee;
+    --text2: #aaa;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --blue: #60a5fa;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+  /* Layout */
+  .app { display: flex; flex-direction: column; height: 100vh; }
+  .header { background: var(--surface); padding: 12px 24px; display: flex; align-items: center; gap: 24px; border-bottom: 1px solid #333; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .tabs { display: flex; gap: 4px; }
+  .tab { padding: 8px 16px; border-radius: 6px; cursor: pointer; background: transparent; color: var(--text2); border: none; font-size: 14px; }
+  .tab:hover { background: var(--surface2); color: var(--text); }
+  .tab.active { background: var(--accent); color: white; }
+  .main { flex: 1; overflow: auto; padding: 24px; }
+
+  /* Replay view */
+  .replay-layout { display: grid; grid-template-columns: 1fr 340px; gap: 24px; height: calc(100vh - 120px); }
+  .board-container { background: var(--surface); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .board-canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; min-height: 0; overflow: hidden; }
+  canvas { border-radius: 8px; max-width: 100%; }
+  .controls { padding: 12px 16px; background: var(--surface2); display: flex; align-items: center; gap: 12px; }
+  .controls button { background: var(--surface); border: 1px solid #444; color: var(--text); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 14px; }
+  .controls button:hover { background: var(--accent); border-color: var(--accent); }
+  .controls button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .controls .frame-info { flex: 1; text-align: center; font-size: 13px; color: var(--text2); }
+  .speed-control { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text2); }
+  .speed-control input { width: 80px; }
+
+  /* Sidebar */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+  .panel { background: var(--surface); border-radius: 12px; padding: 16px; }
+  .panel h3 { font-size: 14px; color: var(--text2); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 1px; }
+  .player-card { padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 4px solid; }
+  .player-card.p0 { border-color: #ef4444; background: rgba(239,68,68,0.1); }
+  .player-card.p1 { border-color: #3b82f6; background: rgba(59,130,246,0.1); }
+  .player-card.p2 { border-color: #f97316; background: rgba(249,115,22,0.1); }
+  .player-card.p3 { border-color: #e5e7eb; background: rgba(229,231,235,0.08); }
+  .player-name { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+  .player-stats { font-size: 12px; color: var(--text2); line-height: 1.8; }
+  .player-stats .vp { color: var(--yellow); font-weight: 600; }
+  .player-resources { display: flex; gap: 6px; margin-top: 6px; }
+  .res-badge { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .res-WOOD { background: #166534; color: #4ade80; }
+  .res-BRICK { background: #7c2d12; color: #fb923c; }
+  .res-SHEEP { background: #365314; color: #a3e635; }
+  .res-WHEAT { background: #713f12; color: #fbbf24; }
+  .res-ORE { background: #374151; color: #d1d5db; }
+
+  .action-log { max-height: 200px; overflow-y: auto; font-size: 12px; line-height: 1.6; font-family: monospace; color: var(--text2); }
+  .action-log .current { color: var(--accent); font-weight: 600; }
+
+  /* Model list */
+  .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .model-card { background: var(--surface); border-radius: 12px; padding: 20px; }
+  .model-card h3 { font-size: 16px; margin-bottom: 8px; }
+  .model-card .meta { font-size: 13px; color: var(--text2); line-height: 1.8; }
+  .model-card .actions { margin-top: 12px; display: flex; gap: 8px; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid #444; }
+  .btn-secondary:hover { background: #1a3a6e; }
+
+  /* Replay list */
+  .replay-list { }
+  .replay-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--surface); border-radius: 8px; margin-bottom: 8px; cursor: pointer; }
+  .replay-row:hover { background: var(--surface2); }
+  .replay-row .info { flex: 1; }
+  .replay-row .info h4 { font-size: 14px; margin-bottom: 2px; }
+  .replay-row .info .meta { font-size: 12px; color: var(--text2); }
+  .replay-row .result { font-size: 13px; font-weight: 600; }
+  .replay-row .result.win { color: var(--green); }
+  .replay-row .result.loss { color: var(--accent); }
+
+  /* Eval results */
+  .eval-section { margin-top: 16px; }
+  .eval-bar { height: 24px; background: var(--surface2); border-radius: 12px; overflow: hidden; margin: 8px 0; }
+  .eval-bar-fill { height: 100%; background: var(--green); border-radius: 12px; transition: width 0.5s ease; }
+  .eval-stat { font-size: 32px; font-weight: 700; }
+  .eval-label { font-size: 13px; color: var(--text2); }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 60px 20px; color: var(--text2); }
+  .empty h2 { margin-bottom: 8px; color: var(--text); }
+
+  /* Loading */
+  .loading { display: flex; align-items: center; justify-content: center; padding: 40px; color: var(--text2); }
+  .spinner { width: 24px; height: 24px; border: 3px solid var(--surface2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Catan Engine</h1>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('replay')">Replay Viewer</button>
+      <button class="tab" onclick="switchTab('models')">Models</button>
+      <button class="tab" onclick="switchTab('replays')">Game Library</button>
+    </div>
+  </div>
+  <div class="main" id="main-content"></div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────
+
+let currentTab = 'replay';
+let replay = null;       // currently loaded replay
+let frameIdx = 0;        // current frame index
+let playing = false;
+let playTimer = null;
+let playSpeed = 200;     // ms per frame
+
+const PLAYER_COLORS = ['#ef4444', '#3b82f6', '#f97316', '#e5e7eb'];
+const PLAYER_NAMES = ['Red', 'Blue', 'Orange', 'White'];
+const RESOURCE_COLORS = {
+  WOOD:  { fill: '#166534', stroke: '#4ade80', label: 'W' },
+  BRICK: { fill: '#7c2d12', stroke: '#fb923c', label: 'B' },
+  SHEEP: { fill: '#365314', stroke: '#a3e635', label: 'S' },
+  WHEAT: { fill: '#713f12', stroke: '#fbbf24', label: 'Wh' },
+  ORE:   { fill: '#374151', stroke: '#d1d5db', label: 'O' },
+  null:  { fill: '#92400e', stroke: '#d4a44a', label: 'D' },
+};
+const RESOURCE_NAMES = ['WOOD', 'BRICK', 'SHEEP', 'WHEAT', 'ORE'];
+
+// ── Tab switching ──────────────────────────────────────────────────
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+  stopPlay();
+  renderTab();
+}
+
+function renderTab() {
+  const main = document.getElementById('main-content');
+  if (currentTab === 'replay') renderReplayTab(main);
+  else if (currentTab === 'models') renderModelsTab(main);
+  else if (currentTab === 'replays') renderReplaysTab(main);
+}
+
+// ── Replay Viewer Tab ──────────────────────────────────────────────
+
+function renderReplayTab(container) {
+  if (!replay) {
+    container.innerHTML = `
+      <div class="empty">
+        <h2>No replay loaded</h2>
+        <p>Generate a game from the Models tab, or select one from the Game Library.</p>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="generateAndWatch()">Generate Game</button>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="replay-layout">
+      <div class="board-container">
+        <div class="board-canvas-wrap">
+          <canvas id="board-canvas" width="680" height="580"></canvas>
+        </div>
+        <div class="controls">
+          <button onclick="firstFrame()">|&lt;</button>
+          <button onclick="prevFrame()">&lt;</button>
+          <button id="play-btn" onclick="togglePlay()">Play</button>
+          <button onclick="nextFrame()">&gt;</button>
+          <button onclick="lastFrame()">&gt;|</button>
+          <div class="frame-info" id="frame-info"></div>
+          <div class="speed-control">
+            <span>Speed</span>
+            <input type="range" min="20" max="1000" value="${playSpeed}" oninput="setSpeed(this.value)">
+          </div>
+        </div>
+      </div>
+      <div class="sidebar">
+        <div class="panel" id="players-panel"><h3>Players</h3></div>
+        <div class="panel"><h3>Action Log</h3><div class="action-log" id="action-log"></div></div>
+      </div>
+    </div>`;
+
+  drawFrame();
+}
+
+function drawFrame() {
+  if (!replay) return;
+  const frame = replay.frames[frameIdx];
+  const canvas = document.getElementById('board-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Compute actual vertex bounds to center the board
+  const board = replay.board;
+  const vpos = board.vertex_positions;
+
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [_, pos] of Object.entries(vpos)) {
+    minX = Math.min(minX, pos[0]); maxX = Math.max(maxX, pos[0]);
+    minY = Math.min(minY, pos[1]); maxY = Math.max(maxY, pos[1]);
+  }
+  const boardW = maxX - minX, boardH = maxY - minY;
+  const scale = Math.min((W - 40) / boardW, (H - 40) / boardH, 1.0);
+  const ox = W / 2 - (minX + maxX) / 2 * scale;
+  const oy = H / 2 - (minY + maxY) / 2 * scale;
+
+  ctx.save();
+  ctx.translate(ox, oy);
+  ctx.scale(scale, scale);
+
+  for (const tile of board.tiles) {
+    drawHexTile(ctx, tile, vpos, 0, 0, frame.robber_tile);
+  }
+
+  // Draw roads
+  for (const [ekey, owner] of Object.entries(frame.roads)) {
+    const [v1, v2] = board.edge_to_vertices[ekey];
+    const p1 = vpos[String(v1)], p2 = vpos[String(v2)];
+    if (!p1 || !p2) continue;
+    ctx.beginPath();
+    ctx.moveTo(p1[0], p1[1]);
+    ctx.lineTo(p2[0], p2[1]);
+    ctx.strokeStyle = PLAYER_COLORS[owner];
+    ctx.lineWidth = 5;
+    ctx.stroke();
+  }
+
+  // Draw buildings
+  for (const [vid, building] of Object.entries(frame.buildings)) {
+    const pos = vpos[vid];
+    if (!pos) continue;
+    const x = pos[0], y = pos[1];
+    const color = PLAYER_COLORS[building.owner];
+
+    if (building.type === 'CITY') {
+      // Star shape for city
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const angle = -Math.PI / 2 + (i * Math.PI / 5);
+        const r = i % 2 === 0 ? 11 : 5;
+        ctx.lineTo(x + r * Math.cos(angle), y + r * Math.sin(angle));
+      }
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else {
+      // Circle for settlement
+      ctx.beginPath();
+      ctx.arc(x, y, 7, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  // Draw port indicators
+  for (const [vid, resource] of Object.entries(board.port_vertices)) {
+    if (frame.buildings[vid]) continue;
+    const pos = vpos[vid];
+    if (!pos) continue;
+    ctx.beginPath();
+    ctx.arc(pos[0], pos[1], 4, 0, Math.PI * 2);
+    ctx.fillStyle = resource ? RESOURCE_COLORS[resource].stroke : '#fff';
+    ctx.globalAlpha = 0.5;
+    ctx.fill();
+    ctx.globalAlpha = 1.0;
+  }
+
+  ctx.restore();
+
+  // Update frame info
+  const info = document.getElementById('frame-info');
+  if (info) {
+    const phase = frame.phase;
+    const dice = frame.dice ? `(${frame.dice[0]}+${frame.dice[1]}=${frame.dice[0]+frame.dice[1]})` : '';
+    const actionStr = frame.action ? frame.action.type : 'Initial';
+    info.textContent = `Frame ${frameIdx}/${replay.frames.length - 1} | Turn ${frame.turn} | P${frame.current_player} | ${phase} | ${actionStr} ${dice}`;
+  }
+
+  // Update play button
+  const playBtn = document.getElementById('play-btn');
+  if (playBtn) playBtn.textContent = playing ? 'Pause' : 'Play';
+
+  // Update player panels
+  updatePlayerPanel(frame);
+  updateActionLog();
+}
+
+function drawHexTile(ctx, tile, vpos, ox, oy, robberTile) {
+  const vertices = ['NORTH', 'NORTHEAST', 'SOUTHEAST', 'SOUTH', 'SOUTHWEST', 'NORTHWEST'];
+  const points = vertices.map(v => {
+    const vid = tile.vertices[v];
+    const p = vpos[String(vid)];
+    return p ? [p[0] + ox, p[1] + oy] : null;
+  }).filter(p => p !== null);
+
+  if (points.length < 6) return;
+
+  const rc = RESOURCE_COLORS[tile.resource] || RESOURCE_COLORS[null];
+
+  // Fill hex
+  ctx.beginPath();
+  ctx.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i][0], points[i][1]);
+  ctx.closePath();
+  ctx.fillStyle = rc.fill;
+  ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Center of hex
+  const cx = points.reduce((s, p) => s + p[0], 0) / points.length;
+  const cy = points.reduce((s, p) => s + p[1], 0) / points.length;
+
+  // Number circle
+  if (tile.number > 0) {
+    const isHot = tile.number === 6 || tile.number === 8;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 14, 0, Math.PI * 2);
+    ctx.fillStyle = '#f5f0e1';
+    ctx.fill();
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = isHot ? '#dc2626' : '#1a1a2e';
+    ctx.font = `${isHot ? 'bold ' : ''}14px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(tile.number), cx, cy);
+  } else {
+    // Desert label
+    ctx.fillStyle = '#d4a44a';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('Desert', cx, cy);
+  }
+
+  // Robber indicator
+  if (tile.id === robberTile && tile.resource !== null) {
+    ctx.beginPath();
+    ctx.arc(cx, cy + 18, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#000';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 8px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('R', cx, cy + 18);
+  }
+
+  // Resource label (small)
+  if (tile.resource) {
+    ctx.fillStyle = rc.stroke;
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(tile.resource, cx, cy - 20);
+  }
+}
+
+function updatePlayerPanel(frame) {
+  const panel = document.getElementById('players-panel');
+  if (!panel) return;
+
+  let html = '<h3>Players</h3>';
+  for (let i = 0; i < frame.players.length; i++) {
+    const p = frame.players[i];
+    const isCurrentPlayer = i === frame.current_player;
+    const isAI = i === (replay.metadata.agent_player ?? 0);
+    const isWinner = frame.winner === i;
+
+    html += `
+      <div class="player-card p${i}" ${isCurrentPlayer ? 'style="outline:2px solid ' + PLAYER_COLORS[i] + '"' : ''}>
+        <div class="player-name">
+          ${PLAYER_NAMES[i]}${isAI ? ' (AI)' : ''}
+          ${isWinner ? ' - WINNER' : ''}
+          ${isCurrentPlayer ? ' *' : ''}
+        </div>
+        <div class="player-stats">
+          VP: <span class="vp">${p.vp}</span> (public: ${p.public_vp})
+          | Cards: ${p.resource_count} | Dev: ${p.dev_card_count}
+          | Knights: ${p.num_knights}
+          ${p.has_longest_road ? '| Longest Road' : ''}
+          ${p.has_largest_army ? '| Largest Army' : ''}
+        </div>
+        <div class="player-resources">
+          ${RESOURCE_NAMES.map((r, j) => p.resources[j] > 0 ? `<span class="res-badge res-${r}">${r[0]}:${p.resources[j]}</span>` : '').join('')}
+        </div>
+      </div>`;
+  }
+  panel.innerHTML = html;
+}
+
+function updateActionLog() {
+  const log = document.getElementById('action-log');
+  if (!log) return;
+
+  const start = Math.max(0, frameIdx - 15);
+  const end = Math.min(replay.frames.length, frameIdx + 5);
+  let html = '';
+  for (let i = start; i < end; i++) {
+    const f = replay.frames[i];
+    const cls = i === frameIdx ? 'current' : '';
+    const action = f.action ? `P${f.current_player}: ${f.action.type}` : 'Initial state';
+    html += `<div class="${cls}">[${i}] ${action}</div>`;
+  }
+  log.innerHTML = html;
+  // Scroll current into view
+  const cur = log.querySelector('.current');
+  if (cur) cur.scrollIntoView({ block: 'nearest' });
+}
+
+// ── Playback controls ──────────────────────────────────────────────
+
+function firstFrame() { frameIdx = 0; drawFrame(); }
+function lastFrame() { frameIdx = replay.frames.length - 1; drawFrame(); }
+function prevFrame() { if (frameIdx > 0) { frameIdx--; drawFrame(); } }
+function nextFrame() {
+  if (frameIdx < replay.frames.length - 1) { frameIdx++; drawFrame(); }
+  else { stopPlay(); }
+}
+
+function togglePlay() {
+  if (playing) stopPlay();
+  else startPlay();
+}
+
+function startPlay() {
+  playing = true;
+  playTimer = setInterval(() => nextFrame(), playSpeed);
+  drawFrame();
+}
+
+function stopPlay() {
+  playing = false;
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+  const btn = document.getElementById('play-btn');
+  if (btn) btn.textContent = 'Play';
+}
+
+function setSpeed(val) {
+  playSpeed = 1020 - parseInt(val);  // invert so right = faster
+  if (playing) { stopPlay(); startPlay(); }
+}
+
+// ── Models Tab ─────────────────────────────────────────────────────
+
+async function renderModelsTab(container) {
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading models...</div>';
+  try {
+    const res = await fetch('/api/models');
+    const data = await res.json();
+
+    if (!data.models.length) {
+      container.innerHTML = '<div class="empty"><h2>No models found</h2><p>Train a model first with <code>python -m training.train</code></p></div>';
+      return;
+    }
+
+    let html = '<h2 style="margin-bottom:20px">Trained Models</h2><div class="model-grid">';
+    for (const m of data.models) {
+      const date = new Date(m.modified * 1000).toLocaleString();
+      html += `
+        <div class="model-card">
+          <h3>${m.filename}</h3>
+          <div class="meta">
+            Size: ${m.size_mb} MB<br>
+            Modified: ${date}<br>
+            Path: ${m.path}
+          </div>
+          <div class="actions">
+            <button class="btn btn-primary" onclick="generateFromModel('${m.path}')">Watch Game</button>
+            <button class="btn btn-secondary" onclick="evalModel('${m.path}')">Run Eval</button>
+          </div>
+          <div id="eval-result-${m.filename.replace('.', '_')}" class="eval-section"></div>
+        </div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="empty"><h2>Error loading models</h2><p>${e.message}</p></div>`;
+  }
+}
+
+async function generateFromModel(modelPath) {
+  const agentType = modelPath.includes('reinforce') ? 'reinforce' : 'a2c';
+  const seed = Math.floor(Math.random() * 100000);
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="loading"><div class="spinner"></div>Generating game...</div>';
+
+  try {
+    const res = await fetch(`/api/replays/generate?model_path=${encodeURIComponent(modelPath)}&agent_type=${agentType}&seed=${seed}&num_games=1`, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.generated && data.generated.length > 0) {
+      await loadReplay(data.generated[0].filename);
+    }
+  } catch (e) {
+    main.innerHTML = `<div class="empty"><h2>Error generating game</h2><p>${e.message}</p></div>`;
+  }
+}
+
+async function generateAndWatch() {
+  // Try to use the best available model
+  try {
+    const res = await fetch('/api/models');
+    const data = await res.json();
+    if (data.models.length > 0) {
+      await generateFromModel(data.models[0].path);
+      return;
+    }
+  } catch (e) {}
+
+  document.getElementById('main-content').innerHTML = '<div class="empty"><h2>No models available</h2><p>Train a model first.</p></div>';
+}
+
+async function evalModel(modelPath) {
+  const agentType = modelPath.includes('reinforce') ? 'reinforce' : 'a2c';
+  const key = modelPath.split('/').pop().replace('.', '_');
+  const el = document.getElementById(`eval-result-${key}`);
+  if (!el) return;
+
+  el.innerHTML = '<div class="loading"><div class="spinner"></div>Running eval (20 games)...</div>';
+
+  try {
+    const res = await fetch(`/api/eval?model_path=${encodeURIComponent(modelPath)}&agent_type=${agentType}&num_games=20`, { method: 'POST' });
+    const data = await res.json();
+
+    const pct = Math.round(data.win_rate * 100);
+    el.innerHTML = `
+      <div style="margin-top:12px">
+        <div class="eval-stat">${pct}%</div>
+        <div class="eval-label">Win rate (${data.wins}/${data.num_games} games, ${data.elapsed_sec}s)</div>
+        <div class="eval-bar"><div class="eval-bar-fill" style="width:${pct}%"></div></div>
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<p style="color:var(--accent)">Eval failed: ${e.message}</p>`;
+  }
+}
+
+// ── Game Library Tab ───────────────────────────────────────────────
+
+async function renderReplaysTab(container) {
+  container.innerHTML = '<div class="loading"><div class="spinner"></div>Loading replays...</div>';
+  try {
+    const res = await fetch('/api/replays');
+    const data = await res.json();
+
+    if (!data.replays.length) {
+      container.innerHTML = `
+        <div class="empty">
+          <h2>No saved replays</h2>
+          <p>Generate games from the Models tab to build your library.</p>
+          <button class="btn btn-primary" style="margin-top:16px" onclick="switchTab('models')">Go to Models</button>
+        </div>`;
+      return;
+    }
+
+    let html = '<h2 style="margin-bottom:20px">Game Library</h2><div class="replay-list">';
+    for (const r of data.replays) {
+      const date = r.timestamp ? new Date(r.timestamp * 1000).toLocaleString() : 'Unknown';
+      const agentPlayer = 0;  // default
+      const won = r.winner === agentPlayer;
+      html += `
+        <div class="replay-row" onclick="loadReplay('${r.filename}')">
+          <div class="info">
+            <h4>${r.filename}</h4>
+            <div class="meta">${r.agent_type} | ${r.num_turns} turns | ${r.num_actions} actions | ${date}</div>
+          </div>
+          <div class="result ${won ? 'win' : 'loss'}">${r.winner !== null ? (won ? 'WIN' : 'LOSS') : 'DRAW'}</div>
+        </div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+  } catch (e) {
+    container.innerHTML = `<div class="empty"><h2>Error</h2><p>${e.message}</p></div>`;
+  }
+}
+
+async function loadReplay(filename) {
+  const main = document.getElementById('main-content');
+  main.innerHTML = '<div class="loading"><div class="spinner"></div>Loading replay...</div>';
+
+  try {
+    const res = await fetch(`/api/replays/${filename}`);
+    replay = await res.json();
+    frameIdx = 0;
+    currentTab = 'replay';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab[onclick="switchTab(\'replay\')"]').classList.add('active');
+    renderReplayTab(main);
+  } catch (e) {
+    main.innerHTML = `<div class="empty"><h2>Error loading replay</h2><p>${e.message}</p></div>`;
+  }
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+  if (!replay) return;
+  if (e.key === 'ArrowLeft' || e.key === 'a') prevFrame();
+  else if (e.key === 'ArrowRight' || e.key === 'd') nextFrame();
+  else if (e.key === ' ') { e.preventDefault(); togglePlay(); }
+  else if (e.key === 'Home') firstFrame();
+  else if (e.key === 'End') lastFrame();
+});
+
+// ── Init ───────────────────────────────────────────────────────────
+
+renderTab();
+</script>
+</body>
+</html>

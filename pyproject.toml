@@ -1,0 +1,13 @@
+[project]
+name = "catan-engine"
+version = "0.1.0"
+description = "Catan game engine for AI/RL training"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+train = ["gymnasium", "numpy", "torch"]
+dev = ["pytest"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
