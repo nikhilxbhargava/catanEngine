@@ -1,17 +1,19 @@
 """Train a Catan agent via parallel self-play against random opponents.
 
-Supports both REINFORCE and A2C (Advantage Actor-Critic) algorithms.
+Supports REINFORCE, A2C, and PPO algorithms.
 Supports --resume to continue from a saved checkpoint.
+PPO includes intermediate reward shaping for faster credit assignment.
 
 Architecture:
   - Main process owns the network and optimizer
   - Worker processes play games using a frozen copy of the weights
   - After each batch of games, workers send back EpisodeRecords
-  - Main process does a single batched gradient update
+  - Main process does a single batched gradient update (A2C/REINFORCE)
+    or multiple epochs of minibatch updates (PPO)
 
 Usage:
-  python -m training.train --algo a2c --batches 500 --batch-size 32
-  python -m training.train --algo a2c --batches 1000 --resume  # continue from checkpoint
+  python -m training.train --algo ppo --batches 500 --batch-size 32
+  python -m training.train --algo ppo --batches 1000 --resume
 """
 
 from __future__ import annotations
@@ -36,7 +38,10 @@ def _play_one_game(args: tuple):
     """Play a single game in a worker process. Returns an EpisodeRecord."""
     weights, game_seed, hidden_dim, player_index, algo = args
 
-    if algo == "a2c":
+    if algo == "ppo":
+        from agents.ppo_agent import PPOAgent
+        agent = PPOAgent(hidden_dim=hidden_dim, device="cpu")
+    elif algo == "a2c":
         from agents.a2c_agent import A2CAgent
         agent = A2CAgent(hidden_dim=hidden_dim, device="cpu")
     else:
@@ -52,17 +57,43 @@ def _play_one_game(args: tuple):
     board = Board.build(seed=game_seed)
     game = Game(board, num_players=4, seed=game_seed + 100)
 
+    # Reward shaping for PPO
+    use_shaping = (algo == "ppo")
+    if use_shaping:
+        from training.rewards import PlayerSnapshot, compute_shaped_reward
+
     while not game.is_over() and game.state.turn_number < 3000:
         actions = game.get_legal_actions()
         if not actions:
             break
         pidx = game.state.current_player_index
+
         if pidx == player_index:
+            # Snapshot before action (for reward shaping)
+            if use_shaping:
+                prev_snap = PlayerSnapshot.from_state(game.state, player_index)
+                prev_opp_vp = [
+                    game.state.players[i].actual_victory_points
+                    for i in range(4) if i != player_index
+                ]
+
             action = agent.choose_action(game.state, actions)
+            game.apply(action)
+
+            # Compute shaped reward
+            if use_shaping:
+                curr_snap = PlayerSnapshot.from_state(game.state, player_index)
+                curr_opp_vp = [
+                    game.state.players[i].actual_victory_points
+                    for i in range(4) if i != player_index
+                ]
+                shaped_r = compute_shaped_reward(prev_snap, curr_snap, prev_opp_vp, curr_opp_vp)
+                if shaped_r != 0:
+                    agent.add_shaped_reward(shaped_r)
         else:
             opp_idx = pidx - 1 if pidx > player_index else pidx
             action = opponents[opp_idx].choose_action(game.state, actions)
-        game.apply(action)
+            game.apply(action)
 
     reward = 1.0 if game.winner() == player_index else (-1.0 if game.winner() is not None else 0.0)
     return agent.finish_episode(reward)
@@ -72,7 +103,10 @@ def _eval_one_game(args: tuple) -> int:
     """Evaluate one game (greedy). Returns 1 if agent wins, 0 otherwise."""
     weights, game_seed, hidden_dim, player_index, algo = args
 
-    if algo == "a2c":
+    if algo == "ppo":
+        from agents.ppo_agent import PPOAgent
+        agent = PPOAgent(hidden_dim=hidden_dim, device="cpu")
+    elif algo == "a2c":
         from agents.a2c_agent import A2CAgent
         agent = A2CAgent(hidden_dim=hidden_dim, device="cpu")
     else:
@@ -114,6 +148,7 @@ def train(
     hidden_dim: int = 256,
     lr: float = 3e-4,
     gamma: float = 0.99,
+    entropy_coeff: float = 0.01,
     num_workers: int = 0,
     device: str = "cpu",
     save_path: str = "checkpoints/a2c.pt",
@@ -123,7 +158,10 @@ def train(
     if num_workers <= 0:
         num_workers = max(1, cpu_count() - 1)
 
-    if algo == "a2c":
+    if algo == "ppo":
+        from agents.ppo_agent import PPOAgent
+        agent = PPOAgent(hidden_dim=hidden_dim, lr=lr, gamma=gamma, entropy_coeff=entropy_coeff, device=device)
+    elif algo == "a2c":
         from agents.a2c_agent import A2CAgent
         agent = A2CAgent(hidden_dim=hidden_dim, lr=lr, gamma=gamma, device=device)
     else:
@@ -167,7 +205,7 @@ def train(
             batch_start = time.time()
 
             # LR scheduling (cosine decay)
-            if algo == "a2c" and hasattr(agent, "adjust_lr"):
+            if algo in ("a2c", "ppo") and hasattr(agent, "adjust_lr"):
                 agent.adjust_lr(batch / num_batches)
 
             weights = agent.get_weights()
@@ -187,7 +225,19 @@ def train(
             games_per_sec = batch_size / batch_time
             elapsed = time.time() - start
 
-            if algo == "a2c":
+            if algo == "ppo":
+                print(
+                    f"Batch {batch:4d}/{num_batches} | "
+                    f"Wins: {batch_wins:2d}/{batch_size} ({batch_wins/batch_size:4.0%}) | "
+                    f"P: {result['policy_loss']:7.4f} "
+                    f"V: {result['value_loss']:7.4f} "
+                    f"H: {result['entropy']:5.2f} "
+                    f"KL: {result.get('approx_kl', 0):6.4f} "
+                    f"Cl: {result.get('clip_frac', 0):4.2f} | "
+                    f"{games_per_sec:5.1f} g/s | "
+                    f"{elapsed:6.1f}s"
+                )
+            elif algo == "a2c":
                 print(
                     f"Batch {batch:4d}/{num_batches} | "
                     f"Wins: {batch_wins:2d}/{batch_size} ({batch_wins/batch_size:4.0%}) | "
@@ -211,7 +261,7 @@ def train(
             if batch % eval_every == 0:
                 eval_start = time.time()
                 eval_items = [
-                    (weights, seed + 999999 + i, hidden_dim, i % 4, algo)
+                    (weights, seed + 999999 + batch * eval_games + i, hidden_dim, i % 4, algo)
                     for i in range(eval_games)
                 ]
                 eval_results = pool.map(_eval_one_game, eval_items)
@@ -264,7 +314,7 @@ def train(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Catan agent")
-    parser.add_argument("--algo", type=str, default="a2c", choices=["reinforce", "a2c"])
+    parser.add_argument("--algo", type=str, default="ppo", choices=["reinforce", "a2c", "ppo"])
     parser.add_argument("--batches", type=int, default=200)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--eval-every", type=int, default=10)
@@ -272,6 +322,7 @@ if __name__ == "__main__":
     parser.add_argument("--hidden-dim", type=int, default=256)
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--gamma", type=float, default=0.99)
+    parser.add_argument("--entropy-coeff", type=float, default=0.01)
     parser.add_argument("--workers", type=int, default=0)
     parser.add_argument("--device", type=str, default="cpu")
     parser.add_argument("--save-path", type=str, default=None)
@@ -298,6 +349,7 @@ if __name__ == "__main__":
         hidden_dim=args.hidden_dim,
         lr=args.lr,
         gamma=args.gamma,
+        entropy_coeff=args.entropy_coeff,
         num_workers=args.workers,
         device=args.device,
         save_path=args.save_path,
